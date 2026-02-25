@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VCT Masters Santiago 2026 — Fantasy League</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #111118; --surface2: #18181f; --border: #2a2a35;
+    --accent: #ff4655; --accent2: #7cffe4; --gold: #ffd166; --silver: #b0bec5;
+    --bronze: #cd7f32; --text: #e8e8f0; --muted: #6b6b80;
+    --americas: #4fa3ff; --emea: #b97cff; --pacific: #4fffb0; --china: #ff9f43;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+  #loading-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; gap: 16px; transition: opacity 0.4s;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-logo {
+    width: 48px; height: 48px; background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.4; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  #loading-overlay p { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted); letter-spacing: 2px; }
+
+  .live-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--pacific);
+    padding: 4px 10px; border-radius: 20px;
+    background: rgba(79,255,176,0.08); border: 1px solid rgba(79,255,176,0.2);
+  }
+  .live-dot::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--pacific);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  header {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a15 50%, #0a0a1a 100%);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px);
+  }
+  .header-inner {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 1rem;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+  .logo h1 { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 2px; }
+  .logo span { color: var(--accent); }
+  nav { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; color: var(--muted); font-family: 'DM Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 1px; padding: 8px 16px; cursor: pointer;
+    border-radius: 4px; transition: all 0.2s;
+  }
+  nav button:hover, nav button.active { background: var(--surface2); color: var(--text); }
+  nav button.active { border-bottom: 2px solid var(--accent); }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+  .hero {
+    background: linear-gradient(135deg, var(--surface) 0%, #1a0a20 100%);
+    border: 1px solid var(--border); border-radius: 12px; padding: 2rem 2.5rem;
+    margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: 'MASTERS'; position: absolute; right: -20px; top: -10px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 8rem;
+    color: rgba(255,70,85,0.04); letter-spacing: 8px; pointer-events: none; user-select: none;
+  }
+  .hero h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 3px; }
+  .hero h2 span { color: var(--accent); }
+  .hero p { color: var(--muted); font-size: 0.85rem; font-family: 'DM Mono', monospace; margin-top: 4px; }
+  .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-family: 'DM Mono', monospace; letter-spacing: 1px; }
+  .badge-red { background: rgba(255,70,85,0.15); color: var(--accent); border: 1px solid rgba(255,70,85,0.3); }
+  .badge-cyan { background: rgba(124,255,228,0.1); color: var(--accent2); border: 1px solid rgba(124,255,228,0.25); }
+  .badge-gold { background: rgba(255,209,102,0.1); color: var(--gold); border: 1px solid rgba(255,209,102,0.25); }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .leaderboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .manager-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.25rem; cursor: pointer; transition: all 0.25s; position: relative; overflow: hidden;
+    animation: fadeUp 0.4s ease both;
+  }
+  .manager-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,70,85,0.12); }
+  .manager-card.rank-1 { border-color: var(--gold); }
+  .manager-card.rank-2 { border-color: var(--silver); }
+  .manager-card.rank-3 { border-color: var(--bronze); }
+  .manager-card.rank-1::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gold); }
+  .manager-card.rank-2::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--silver); }
+  .manager-card.rank-3::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--bronze); }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .rank-badge { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 1rem; flex-shrink: 0; }
+  .rank-1 .rank-badge { background: rgba(255,209,102,0.2); color: var(--gold); }
+  .rank-2 .rank-badge { background: rgba(176,190,197,0.2); color: var(--silver); }
+  .rank-3 .rank-badge { background: rgba(205,127,50,0.2); color: var(--bronze); }
+  .manager-card:not(.rank-1):not(.rank-2):not(.rank-3) .rank-badge { background: var(--surface2); color: var(--muted); }
+  .manager-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 2px; flex: 1; padding: 0 12px; }
+  .manager-pts { text-align: right; }
+  .manager-pts .pts-num { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--accent); line-height: 1; }
+  .manager-pts .pts-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; }
+  .roster-preview { display: flex; flex-wrap: wrap; gap: 4px; }
+  .player-chip {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    padding: 2px 8px; font-size: 0.72rem; font-family: 'DM Mono', monospace; color: var(--muted);
+    display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .player-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+  .chip-pts { color: var(--accent); font-weight: 500; }
+  .chip-pts:not(:empty)::before { content: ' · '; color: var(--border); }
+  .bar-wrap { height: 4px; background: var(--surface2); border-radius: 2px; margin-top: 12px; }
+  .bar-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.6s cubic-bezier(.17,.67,.35,1.2); }
+
+  .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem; }
+  .lb-table { width: 100%; border-collapse: collapse; }
+  .lb-table th { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 1.5px; color: var(--muted); padding: 12px 20px; text-align: left; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .lb-table th:last-child { text-align: right; }
+  .lb-table td { padding: 14px 20px; border-bottom: 1px solid rgba(42,42,53,0.5); font-size: 0.9rem; }
+  .lb-table tr:last-child td { border-bottom: none; }
+  .lb-table tr:hover td { background: rgba(255,255,255,0.015); }
+  .lb-rank-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--muted); }
+  .lb-rank-num.gold { color: var(--gold); } .lb-rank-num.silver { color: var(--silver); } .lb-rank-num.bronze { color: var(--bronze); }
+  .lb-manager { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1.5px; }
+  .lb-score { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: var(--accent); text-align: right; }
+  .lb-players { color: var(--muted); font-size: 0.78rem; font-family: 'DM Mono', monospace; }
+
+  .roster-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.5rem; }
+  .roster-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .roster-card-header { padding: 1rem 1.25rem; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .roster-card-header .name { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 2px; }
+  .roster-card-header .total { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--accent); }
+  .roster-table { width: 100%; border-collapse: collapse; }
+  .roster-table th { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 1.5px; color: var(--muted); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .roster-table th:last-child { text-align: right; }
+  .roster-table td { padding: 9px 12px; font-size: 0.85rem; border-bottom: 1px solid rgba(42,42,53,0.5); }
+  .roster-table tr:last-child td { border-bottom: none; }
+  .roster-table td:last-child { text-align: right; }
+  .player-name-cell { display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-weight: 500; font-size: 0.82rem; }
+  .role-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .role-Duelist { background: var(--accent); } .role-Initiator { background: var(--americas); }
+  .role-Controller { background: var(--emea); } .role-Senti { background: var(--pacific); } .role-unknown { background: var(--muted); }
+  .region-tag { font-size: 0.65rem; font-family: 'DM Mono', monospace; padding: 1px 6px; border-radius: 3px; }
+  .region-Americas { background: rgba(79,163,255,0.15); color: var(--americas); }
+  .region-EMEA { background: rgba(185,124,255,0.15); color: var(--emea); }
+  .region-Pacific { background: rgba(79,255,176,0.15); color: var(--pacific); }
+  .region-China { background: rgba(255,159,67,0.15); color: var(--china); }
+  .pts-input-cell { display: flex; align-items: center; justify-content: flex-end; }
+  .pts-input {
+    width: 64px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 0.82rem; padding: 4px 8px; text-align: right; transition: border-color 0.2s;
+  }
+  .pts-input:focus { outline: none; border-color: var(--accent); }
+  .pts-input.has-value { color: var(--accent); border-color: rgba(255,70,85,0.4); }
+  .pts-input.saving { border-color: var(--gold); }
+
+  .points-section { margin-bottom: 2rem; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 2px; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 12px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .all-players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+  .player-pts-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .pname { font-family: 'DM Mono', monospace; font-size: 0.82rem; font-weight: 500; flex: 1; }
+  .pteam { font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .owner-tag { font-size: 0.65rem; font-family: 'DM Mono', monospace; padding: 1px 6px; border-radius: 3px; background: var(--surface2); color: var(--muted); }
+
+  .tabs-row { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .tab-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.72rem; padding: 5px 14px; cursor: pointer; transition: all 0.2s; }
+  .tab-btn:hover, .tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,70,85,0.06); }
+  .search-bar { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.85rem; padding: 10px 16px; margin-bottom: 1.25rem; transition: border-color 0.2s; }
+  .search-bar:focus { outline: none; border-color: var(--accent); }
+  .search-bar::placeholder { color: var(--muted); }
+  .save-toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--pacific); border-radius: 8px; padding: 10px 20px; font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--pacific); opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 999; }
+  .save-toast.show { opacity: 1; transform: translateY(0); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 768px) { main { padding: 1rem; } .hero { padding: 1.5rem; } nav button { padding: 8px 8px; font-size: 0.65rem; } }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loading-logo"></div>
+  <p>CONNECTING TO FIREBASE...</p>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <h1>VCT <span>FANTASY</span></h1>
+    </div>
+    <nav>
+      <button class="active" onclick="showView('leaderboard', this)">STANDINGS</button>
+      <button onclick="showView('rosters', this)">ROSTERS</button>
+      <button onclick="showView('points', this)">POINTS ENTRY</button>
+      <button onclick="showView('players', this)">ALL PLAYERS</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div>
+      <h2>VALORANT MASTERS <span>SANTIAGO</span> 2026</h2>
+      <p>// FANTASY LEAGUE · 6 MANAGERS · 8 PLAYERS EACH · FEB 28 – MAR 15</p>
+    </div>
+    <div class="hero-badges">
+      <span class="badge badge-red">$1,000,000 PRIZE POOL</span>
+      <span class="badge badge-cyan">8 TEAMS</span>
+      <span class="badge badge-gold">ESPACIO RIESCO · SANTIAGO</span>
+      <span class="live-dot">LIVE SYNC</span>
+    </div>
+  </div>
+
+  <div id="view-leaderboard" class="view active">
+    <div class="lb-table-wrap">
+      <table class="lb-table">
+        <thead><tr><th>#</th><th>MANAGER</th><th>ROSTER</th><th style="text-align:right">PTS</th></tr></thead>
+        <tbody id="lb-tbody"></tbody>
+      </table>
+    </div>
+    <div class="leaderboard-grid" id="cards-grid"></div>
+  </div>
+
+  <div id="view-rosters" class="view">
+    <div class="tabs-row" id="roster-filter-tabs">
+      <button class="tab-btn active" onclick="filterRosters('all', this)">ALL</button>
+      <button class="tab-btn" onclick="filterRosters('Keith', this)">KEITH</button>
+      <button class="tab-btn" onclick="filterRosters('Derek', this)">DEREK</button>
+      <button class="tab-btn" onclick="filterRosters('Stephen', this)">STEPHEN</button>
+      <button class="tab-btn" onclick="filterRosters('Owen', this)">OWEN</button>
+      <button class="tab-btn" onclick="filterRosters('Boy', this)">BOY</button>
+      <button class="tab-btn" onclick="filterRosters('Brad', this)">BRAD</button>
+    </div>
+    <div class="roster-view" id="roster-grid"></div>
+  </div>
+
+  <div id="view-points" class="view">
+    <p style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.8rem;margin-bottom:1.5rem;">
+      // Enter points per player. Changes sync live for everyone instantly.
+    </p>
+    <div class="all-players-grid" id="points-grid"></div>
+  </div>
+
+  <div id="view-players" class="view">
+    <input type="text" class="search-bar" placeholder="Search players, teams, regions..." oninput="filterPlayers(this.value)" />
+    <div class="tabs-row" id="region-tabs">
+      <button class="tab-btn active" onclick="filterRegion('all', this)">ALL REGIONS</button>
+      <button class="tab-btn" onclick="filterRegion('Americas', this)">AMERICAS</button>
+      <button class="tab-btn" onclick="filterRegion('EMEA', this)">EMEA</button>
+      <button class="tab-btn" onclick="filterRegion('Pacific', this)">PACIFIC</button>
+      <button class="tab-btn" onclick="filterRegion('China', this)">CHINA</button>
+    </div>
+    <div class="all-players-grid" id="all-players-grid"></div>
+  </div>
+</main>
+
+<div class="save-toast" id="save-toast">✓ Synced to Firebase</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNuRLMICo3kOmDAy3KY6R6nhCHFHB78pA",
+  authDomain: "fantasy-league-pts.firebaseapp.com",
+  databaseURL: "https://fantasy-league-pts-default-rtdb.firebaseio.com",
+  projectId: "fantasy-league-pts",
+  storageBucket: "fantasy-league-pts.firebasestorage.app",
+  messagingSenderId: "225538768510",
+  appId: "1:225538768510:web:f2647aeabd6cd78bb4e22f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── DATA ──────────────────────────────────────────────────────
+const allPlayers = [
+  {name:'koalanoob', team:'Furia', region:'Americas', role:'Duelist'},
+  {name:'nerve',     team:'Furia', region:'Americas', role:'Senti'},
+  {name:'alym',      team:'Furia', region:'Americas', role:'Duelist'},
+  {name:'eeiu',      team:'Furia', region:'Americas', role:'Initiator'},
+  {name:'artzin',    team:'Furia', region:'Americas', role:'Controller'},
+  {name:'valyn',     team:'G2',    region:'Americas', role:'Controller'},
+  {name:'babybay',   team:'G2',    region:'Americas', role:'Duelist'},
+  {name:'jawgemo',   team:'G2',    region:'Americas', role:'Duelist'},
+  {name:'trent',     team:'G2',    region:'Americas', role:'Initiator'},
+  {name:'leaf',      team:'G2',    region:'Americas', role:'Senti'},
+  {name:'brawk',     team:'NRG',   region:'Americas', role:'Initiator'},
+  {name:'keiko',     team:'NRG',   region:'Americas', role:'Controller'},
+  {name:'ethan',     team:'NRG',   region:'Americas', role:'Initiator'},
+  {name:'mada',      team:'NRG',   region:'Americas', role:'Duelist'},
+  {name:'skuba',     team:'NRG',   region:'Americas', role:'Senti'},
+  {name:'marteen',   team:'Gentle Mates', region:'EMEA', role:'Duelist'},
+  {name:'minny',     team:'Gentle Mates', region:'EMEA', role:'Senti'},
+  {name:'starxo',    team:'Gentle Mates', region:'EMEA', role:'Initiator'},
+  {name:'glyph',     team:'Gentle Mates', region:'EMEA', role:'Controller'},
+  {name:'bipo',      team:'Gentle Mates', region:'EMEA', role:'Duelist'},
+  {name:'nats',      team:'Team Liquid', region:'EMEA', role:'Senti'},
+  {name:'miniboo',   team:'Team Liquid', region:'EMEA', role:'Duelist'},
+  {name:'kamo',      team:'Team Liquid', region:'EMEA', role:'Duelist'},
+  {name:'purpo',     team:'Team Liquid', region:'EMEA', role:'Initiator'},
+  {name:'wayne',     team:'Team Liquid', region:'EMEA', role:'Controller'},
+  {name:'lovers rock', team:'BBL', region:'EMEA', role:'Duelist'},
+  {name:'larok',     team:'BBL',   region:'EMEA', role:'Duelist'},
+  {name:'rose',      team:'BBL',   region:'EMEA', role:'Initiator'},
+  {name:'loita',     team:'BBL',   region:'EMEA', role:'Controller'},
+  {name:'crewan',    team:'BBL',   region:'EMEA', role:'Senti'},
+  {name:'something', team:'PRX',   region:'Pacific', role:'Duelist'},
+  {name:'invy',      team:'PRX',   region:'Pacific', role:'Initiator'},
+  {name:'forsaken',  team:'PRX',   region:'Pacific', role:'Controller'},
+  {name:'davai',     team:'PRX',   region:'Pacific', role:'Senti'},
+  {name:'jinggg',    team:'PRX',   region:'Pacific', role:'Duelist'},
+  {name:'buzz',      team:'T1',    region:'Pacific', role:'Duelist'},
+  {name:'stax',      team:'T1',    region:'Pacific', role:'Initiator'},
+  {name:'meteor',    team:'T1',    region:'Pacific', role:'Senti'},
+  {name:'izu',       team:'T1',    region:'Pacific', role:'Duelist'},
+  {name:'munchkin',  team:'T1',    region:'Pacific', role:'Controller'},
+  {name:'dambi',     team:'Nongshim', region:'Pacific', role:'Duelist'},
+  {name:'rb',        team:'Nongshim', region:'Pacific', role:'Initiator'},
+  {name:'xross',     team:'Nongshim', region:'Pacific', role:'Controller'},
+  {name:'ivy',       team:'Nongshim', region:'Pacific', role:'Senti'},
+  {name:'zmjjkk',   team:'EDG',   region:'China', role:'Duelist'},
+  {name:'chichoo',   team:'EDG',   region:'China', role:'Senti'},
+  {name:'smoggy',    team:'EDG',   region:'China', role:'Controller'},
+  {name:'nobody',    team:'EDG',   region:'China', role:'Initiator'},
+  {name:'cb',        team:'EDG',   region:'China', role:'Duelist'},
+  {name:'shrimp',    team:'ALL GAMERS', region:'China', role:'Initiator'},
+  {name:'au1',       team:'ALL GAMERS', region:'China', role:'Senti'},
+  {name:'iamgrq',    team:'ALL GAMERS', region:'China', role:'Controller'},
+  {name:'happywei',  team:'XLG',   region:'China', role:'Controller'},
+  {name:'lysoar',    team:'XLG',   region:'China', role:'Senti'},
+  {name:'wsleo',     team:'XLG',   region:'China', role:'Initiator'},
+];
+
+const managers = [
+  { name:'Keith',   players:['forsaken','jinggg','babybay','invy','chichoo','rose','crewan','iamgrq'] },
+  { name:'Derek',   players:['brawk','rb','davai','ivy','mada','dambi','wayne','glyph'] },
+  { name:'Stephen', players:['leaf','meteor','trent','keiko','happywei','lovers rock','eeiu','larok'] },
+  { name:'Owen',    players:['nats','valyn','something','jawgemo','ethan','lysoar','loita','purpo'] },
+  { name:'Boy',     players:['izu','munchkin','stax','skuba','buzz','artzin','nerve','wsleo'] },
+  { name:'Brad',    players:['marteen','koalanoob','smoggy','minny','xross','nobody','shrimp','au1'] },
+];
+
+const ownerOf = {};
+managers.forEach(m => m.players.forEach(p => { ownerOf[p.toLowerCase()] = m.name; }));
+
+// ── SHARED STATE ──────────────────────────────────────────────
+let pts = {};
+
+// onValue fires immediately on load AND whenever any user changes data in Firebase
+onValue(ref(db, 'points'), (snapshot) => {
+  pts = snapshot.val() || {};
+
+  // Hide loading screen
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) { overlay.classList.add('hidden'); setTimeout(() => overlay.remove(), 500); }
+
+  // Re-render active view so everyone sees the latest
+  refreshActive();
+});
+
+// ── HELPERS ───────────────────────────────────────────────────
+const getPts  = (name) => pts[name.toLowerCase()] || 0;
+const getTotal = (m)   => m.players.reduce((s, p) => s + getPts(p), 0);
+const getPlayer = (name) => allPlayers.find(p => p.name.toLowerCase() === name.toLowerCase())
+                         || { name, team:'?', region:'Unknown', role:'unknown' };
+
+function refreshActive() {
+  if (document.getElementById('view-leaderboard').classList.contains('active')) renderLeaderboard();
+  else if (document.getElementById('view-rosters').classList.contains('active')) renderRosters();
+  else if (document.getElementById('view-points').classList.contains('active')) renderPointsEntry();
+  else if (document.getElementById('view-players').classList.contains('active')) renderAllPlayers();
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+window.showView = (id, btn) => {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  refreshActive();
+};
+
+// ── LEADERBOARD ───────────────────────────────────────────────
+function renderLeaderboard() {
+  const sorted = [...managers].map(m => ({...m, total: getTotal(m)})).sort((a,b) => b.total - a.total);
+  const rankCls = ['gold','silver','bronze'];
+
+  document.getElementById('lb-tbody').innerHTML = sorted.map((m, i) => `
+    <tr>
+      <td><span class="lb-rank-num ${rankCls[i]||''}">${i+1}</span></td>
+      <td><span class="lb-manager">${m.name.toUpperCase()}</span></td>
+      <td><span class="lb-players">${m.players.slice(0,4).join(' · ')} ···</span></td>
+      <td><span class="lb-score">${m.total}</span></td>
+    </tr>`).join('');
+
+  const maxPts = Math.max(...sorted.map(m => m.total), 1);
+  document.getElementById('cards-grid').innerHTML = '';
+  sorted.forEach((m, i) => {
+    const card = document.createElement('div');
+    card.className = `manager-card ${i < 3 ? 'rank-'+(i+1) : ''}`;
+    card.style.animationDelay = `${i*0.06}s`;
+    const chips = m.players.map(p => {
+      const p_pts = getPts(p);
+      return `<span class="player-chip">${p}<span class="chip-pts">${p_pts > 0 ? p_pts : ''}</span></span>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="rank-badge">${i+1}</div>
+        <div class="manager-name">${m.name.toUpperCase()}</div>
+        <div class="manager-pts"><div class="pts-num">${m.total}</div><div class="pts-label">PTS</div></div>
+      </div>
+      <div class="roster-preview">${chips}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${(m.total/maxPts*100).toFixed(1)}%"></div></div>`;
+    document.getElementById('cards-grid').appendChild(card);
+  });
+}
+
+// ── ROSTERS ───────────────────────────────────────────────────
+let rosterFilter = 'all';
+window.filterRosters = (val, btn) => {
+  rosterFilter = val;
+  document.querySelectorAll('#roster-filter-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRosters();
+};
+
+function renderRosters() {
+  const sorted = [...managers].map(m => ({...m, total: getTotal(m)})).sort((a,b) => b.total - a.total);
+  document.getElementById('roster-grid').innerHTML = '';
+  sorted.forEach(m => {
+    if (rosterFilter !== 'all' && m.name !== rosterFilter) return;
+    const card = document.createElement('div');
+    card.className = 'roster-card';
+    const rows = m.players.map(p => {
+      const pd = getPlayer(p); const p_pts = getPts(p);
+      return `<tr>
+        <td><div class="player-name-cell"><span class="role-dot role-${pd.role}"></span>${p}</div></td>
+        <td><span class="region-tag region-${pd.region}">${pd.team}</span></td>
+        <td style="color:var(--muted);font-size:0.72rem;font-family:'DM Mono',monospace">${pd.role}</td>
+        <td><div class="pts-input-cell">
+          <input class="pts-input ${p_pts > 0 ? 'has-value' : ''}" type="number" min="0"
+            value="${p_pts > 0 ? p_pts : ''}" placeholder="0" data-player="${p.toLowerCase()}"
+            onchange="handlePtsChange(this)" oninput="handlePtsChange(this)" />
+        </div></td></tr>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="roster-card-header">
+        <span class="name">${m.name.toUpperCase()}</span>
+        <span class="total" id="total-${m.name}">${m.total}</span>
+      </div>
+      <table class="roster-table">
+        <thead><tr><th>PLAYER</th><th>TEAM</th><th>ROLE</th><th style="text-align:right">PTS</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    document.getElementById('roster-grid').appendChild(card);
+  });
+}
+
+// ── POINTS ENTRY ──────────────────────────────────────────────
+function renderPointsEntry() {
+  const grid = document.getElementById('points-grid');
+  grid.innerHTML = '';
+  ['Americas','EMEA','Pacific','China'].forEach(region => {
+    const players = allPlayers.filter(p => p.region === region);
+    if (!players.length) return;
+    const sec = document.createElement('div');
+    sec.className = 'points-section'; sec.style.gridColumn = '1 / -1';
+    sec.innerHTML = `<div class="section-title">${region}</div>`;
+    grid.appendChild(sec);
+    players.forEach(p => {
+      const owner = ownerOf[p.name.toLowerCase()] || '—';
+      const p_pts = getPts(p.name);
+      const row = document.createElement('div');
+      row.className = 'player-pts-row';
+      row.innerHTML = `
+        <span class="role-dot role-${p.role}"></span>
+        <div style="flex:1"><div class="pname">${p.name}</div><div class="pteam">${p.team} · ${p.role}</div></div>
+        <span class="owner-tag">${owner}</span>
+        <input class="pts-input ${p_pts > 0 ? 'has-value' : ''}" type="number" min="0"
+          value="${p_pts > 0 ? p_pts : ''}" placeholder="0" data-player="${p.name.toLowerCase()}"
+          onchange="handlePtsChange(this)" oninput="handlePtsChange(this)" />`;
+      grid.appendChild(row);
+    });
+  });
+}
+
+// ── ALL PLAYERS ───────────────────────────────────────────────
+let currentRegion = 'all', currentSearch = '';
+window.filterRegion = (region, btn) => {
+  currentRegion = region;
+  document.querySelectorAll('#region-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); renderAllPlayers();
+};
+window.filterPlayers = (val) => { currentSearch = val.toLowerCase(); renderAllPlayers(); };
+
+function renderAllPlayers() {
+  document.getElementById('all-players-grid').innerHTML = '';
+  allPlayers.filter(p => {
+    if (currentRegion !== 'all' && p.region !== currentRegion) return false;
+    if (currentSearch && !p.name.toLowerCase().includes(currentSearch)
+        && !p.team.toLowerCase().includes(currentSearch)
+        && !p.region.toLowerCase().includes(currentSearch)) return false;
+    return true;
+  }).forEach(p => {
+    const owner = ownerOf[p.name.toLowerCase()] || '—';
+    const p_pts = getPts(p.name);
+    const row = document.createElement('div');
+    row.className = 'player-pts-row';
+    row.innerHTML = `
+      <span class="role-dot role-${p.role}"></span>
+      <div style="flex:1"><div class="pname">${p.name}</div>
+        <div class="pteam">${p.team} · <span class="region-tag region-${p.region}">${p.region}</span></div></div>
+      <span class="owner-tag">${owner}</span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--accent);min-width:40px;text-align:right">${p_pts || '—'}</span>`;
+    document.getElementById('all-players-grid').appendChild(row);
+  });
+}
+
+// ── WRITE TO FIREBASE ─────────────────────────────────────────
+const saveTimers = {};
+window.handlePtsChange = (input) => {
+  const player = input.dataset.player;
+  const val = parseInt(input.value) || 0;
+
+  // Optimistic local update
+  pts[player] = val;
+  input.classList.toggle('has-value', val > 0);
+  input.classList.add('saving');
+
+  // Update visible totals immediately
+  managers.forEach(m => {
+    const el = document.getElementById('total-' + m.name);
+    if (el) el.textContent = getTotal(m);
+  });
+
+  // Debounce write to Firebase (300ms)
+  clearTimeout(saveTimers[player]);
+  saveTimers[player] = setTimeout(() => {
+    set(ref(db, `points/${player}`), val)
+      .then(() => { input.classList.remove('saving'); showToast(); })
+      .catch(err => { console.error(err); input.classList.remove('saving'); });
+  }, 300);
+};
+
+function showToast() {
+  const t = document.getElementById('save-toast');
+  t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove('show'), 1800);
+}
+</script>
+</body>
+</html>
